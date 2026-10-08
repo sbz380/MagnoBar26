@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previsore Magneto-Barometrico v3.1 (Persistent)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --error: #ef4444;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .clock-display {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: var(--accent);
+            background: #0f172a;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        h1, h2 {
+            margin: 0;
+            color: var(--accent);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #fff;
+            box-sizing: border-box;
+        }
+
+        input.invalid {
+            border-color: var(--error);
+            box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+        }
+
+        .location-box, .config-box {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            margin-bottom: 15px;
+        }
+
+        .geo-btn {
+            background: #334155;
+            color: #fff;
+            padding: 8px 12px;
+            margin-top: 5px;
+            font-size: 0.85rem;
+        }
+
+        .result-box {
+            text-align: center;
+            border: 2px solid var(--accent);
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .index-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .status {
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+
+        .note {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            color: #0f172a;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .btn-export {
+            background: var(--success);
+            color: #fff;
+            width: auto;
+            margin-top: 0;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: #fff;
+            width: auto;
+            margin-top: 0;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .alert-msg {
+            color: var(--error);
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 15px;
+            max-height: 350px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #334155;
+            white-space: nowrap;
+        }
+
+        th {
+            color: var(--accent);
+            background: #0f172a;
+            position: sticky;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <div class="header-bar">
+            <h1>Stazione Magneto-Barometrica</h1>
+            <div class="clock-display" id="liveClock">00:00:00</div>
+        </div>
+
+        <!-- POSIZIONE OBBLIGATORIA -->
+        <div class="location-box" id="locationCard">
+            <label><strong>Posizione di Rilevamento (Obbligatoria):</strong></label>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                <input type="text" id="location" placeholder="Coordinate o Nome Città (es. Roma, IT)" readonly>
+                <button type="button" class="geo-btn" onclick="requestGPS()">Rileva GPS</button>
+            </div>
+            <div style="margin-top: 8px;">
+                <label><input type="checkbox" id="manualLocToggle" onchange="toggleManualLocation()"> Inserisci posizione manualmente</label>
+            </div>
+            <div class="alert-msg" id="locationAlert">⚠️ Impossibile procedere: inserisci o rileva la posizione prima di calcolare.</div>
+        </div>
+
+        <!-- PARAMETRI DI INPUT -->
+        <div class="grid">
+            <div>
+                <label for="pressure">Pressione (hPa):</label>
+                <input type="number" id="pressure" value="1016" step="0.1">
+            </div>
+            <div>
+                <label for="trend">Trend Pressione (hPa/3h):</label>
+                <input type="number" id="trend" value="1.5" step="0.1" title="Positivo se in aumento, Negativo se in calo">
+            </div>
+            <div>
+                <label for="mag">Campo Magnetico B (&mu;T):</label>
+                <input type="number" id="mag" value="47.2" step="0.1">
+            </div>
+            <div>
+                <label for="variance">Instabilità Magnetica (&sigma;):</label>
+                <input type="number" id="variance" value="0.8" step="0.1" title="Varianza residua">
+            </div>
+        </div>
+
+        <button onclick="calculate()">Calcola Previsione Avanzata</button>
+    </div>
+
+    <!-- ESITO PREVISIONE -->
+    <div class="card">
+        <h2>Analisi e Previsione</h2>
+        <div class="result-box">
+            <div class="index-value" id="idxDisplay">--</div>
+            <div class="status" id="statusDisplay">In attesa dei dati...</div>
+        </div>
+        <p class="note" id="explanationText">
+            Inserisci la posizione e i dati meteo, poi premi calcola per generare la tendenza.
+        </p>
+    </div>
+
+    <!-- REGISTRO MEMORIZZATO -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h2>Registro Storico Mensile (<span id="recordCount">0</span>)</h2>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-export" onclick="exportToCSV()">📥 Esporta CSV/Excel</button>
+                <button class="btn-danger" onclick="clearHistory()">🗑️ Svuota Registro</button>
+            </div>
+        </div>
+
+        <!-- CONFIGURAZIONE GOOGLE SHEETS (OPZIONALE) -->
+        <div class="config-box" style="margin-top: 15px;">
+            <label for="webhookUrl"><strong>Integrazione Google Sheets (Opzionale):</strong></label>
+            <input type="url" id="webhookUrl" placeholder="Incolla l'URL della Web App di Google Sheets per il salvataggio cloud automatico" onchange="saveWebhookUrl()">
+            <p class="note" style="margin-top: 5px;">Se inserisci l'URL di Google Script, ogni calcolo verrà inviato direttamente al tuo foglio cloud.</p>
+        </div>
+
+        <div class="table-container">
+            <table id="logTable">
+                <thead>
+                    <tr>
+                        <th>Data e Ora</th>
+                        <th>Posizione</th>
+                        <th>Press. (hPa)</th>
+                        <th>Trend (hPa/3h)</th>
+                        <th>Campo Mag. (&mu;T)</th>
+                        <th>Varianza (&sigma;)</th>
+                        <th>Risultato (I)</th>
+                        <th>Previsione</th>
+                    </tr>
+                </thead>
+                <tbody id="logBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let records = [];
+
+// Carica lo storico salvato nel browser all'avvio
+window.onload = function() {
+    loadSavedRecords();
+    loadWebhookUrl();
+    updateClock();
+};
+
+// Orologio in Tempo Reale
+function updateClock() {
+    const now = new Date();
+    document.getElementById('liveClock').innerText = now.toLocaleTimeString('it-IT');
+}
+setInterval(updateClock, 1000);
+
+// Carica dati da localStorage
+function loadSavedRecords() {
+    const stored = localStorage.getItem('magneto_baro_records');
+    if (stored) {
+        records = JSON.parse(stored);
+        renderTable();
+    }
+}
+
+// Salva URL Webhook
+function saveWebhookUrl() {
+    const url = document.getElementById('webhookUrl').value.trim();
+    localStorage.setItem('magneto_baro_webhook', url);
+}
+
+function loadWebhookUrl() {
+    const savedUrl = localStorage.getItem('magneto_baro_webhook');
+    if (savedUrl) {
+        document.getElementById('webhookUrl').value = savedUrl;
+    }
+}
+
+// Gestione Posizione
+function requestGPS() {
+    const locInput = document.getElementById('location');
+    const alertMsg = document.getElementById('locationAlert');
+
+    if (navigator.geolocation) {
+        locInput.value = "Rilevamento in corso...";
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude.toFixed(4);
+                const lon = position.coords.longitude.toFixed(4);
+                locInput.value = `Lat: ${lat}, Lon: ${lon}`;
+                locInput.classList.remove('invalid');
+                alertMsg.style.display = 'none';
+            },
+            (error) => {
+                locInput.value = "";
+                alert("Impossibile ottenere la posizione GPS. Usa l'inserimento manuale.");
+            }
+        );
+    } else {
+        alert("La geolocalizzazione non è supportata dal browser.");
+    }
+}
+
+function toggleManualLocation() {
+    const isManual = document.getElementById('manualLocToggle').checked;
+    const locInput = document.getElementById('location');
+    locInput.readOnly = !isManual;
+    if (isManual) {
+        locInput.focus();
+        locInput.placeholder = "Digita posizione (es. Milano)";
+    } else {
+        locInput.value = "";
+        locInput.placeholder = "Coordinate o Nome Città (es. Roma, IT)";
+    }
+}
+
+// Calcolo
+function calculate() {
+    const locInput = document.getElementById('location');
+    const alertMsg = document.getElementById('locationAlert');
+
+    if (!locInput.value.trim() || locInput.value === "Rilevamento in corso...") {
+        locInput.classList.add('invalid');
+        alertMsg.style.display = 'block';
+        document.getElementById('locationCard').scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
+
+    locInput.classList.remove('invalid');
+    alertMsg.style.display = 'none';
+
+    const P = parseFloat(document.getElementById('pressure').value);
+    const dP = parseFloat(document.getElementById('trend').value);
+    const B = parseFloat(document.getElementById('mag').value);
+    const sigma = parseFloat(document.getElementById('variance').value);
+
+    const P_REF = 1013.25;
+    const P_STD = 10.0;
+    const B_REF = 47.0;
+
+    const pComp = (P - P_REF) / P_STD;
+    const trendComp = dP / 2.0; 
+    const magComp = (B - B_REF) / B_REF;
+
+    let postStormDampening = 0;
+    if (dP > 1.2 && P > 1012.0) {
+        postStormDampening = 0.4;
+    }
+
+    const alpha = 0.25;
+    const beta  = 0.45;
+    const gamma = 0.15;
+    const delta = 0.15;
+
+    let I_meteo = (alpha * pComp) + (beta * trendComp) + (gamma * magComp) - (delta * sigma) - postStormDampening;
+    I_meteo = parseFloat(I_meteo.toFixed(2));
+
+    document.getElementById('idxDisplay').innerText = I_meteo;
+
+    let status = "";
+    let expl = "";
+
+    if (postStormDampening > 0 && sigma > 0.5) {
+        status = "🌤️ Transizione Post-Temporale";
+        expl = "La pressione risale post-pioggia e l'atmosfera si scarica. Stabilità prevista in 6-12 ore.";
+    } else if (I_meteo > 1.2) {
+        status = "☀️ Stabilità / Tempo Bello";
+        expl = "Massa d'aria stabile e asciutta consolidata.";
+    } else if (I_meteo > 0.3) {
+        status = "⛅ Variabile Tendente al Bello";
+        expl = "Condizioni in progressivo miglioramento con ampie schiarite.";
+    } else if (I_meteo >= -0.3) {
+        status = "☁️ Stazionarietà / Variabile";
+        expl = "Nessun cambio radicale nelle prossime ore. Possibili addensamenti isolati.";
+    } else if (I_meteo >= -1.2) {
+        status = "🌧️ In Peggioramento / Pioggia";
+        expl = "Calo di pressione unito ad anomalia magnetica: instabilità in avvicinamento.";
+    } else {
+        status = "🌩️ Allerta Temporali";
+        expl = "Forte calo barometrico e turbolenza elettromagnetica ionosferica.";
+    }
+
+    document.getElementById('statusDisplay').innerText = status;
+    document.getElementById('explanationText').innerText = expl;
+
+    // Crea record
+    const timestamp = new Date().toLocaleString('it-IT');
+    const newRecord = {
+        timestamp,
+        location: locInput.value.trim(),
+        pressure: P,
+        trend: dP,
+        mag: B,
+        variance: sigma,
+        result: I_meteo,
+        status: status
+    };
+
+    // Aggiungi e salva in localStorage
+    records.push(newRecord);
+    localStorage.setItem('magneto_baro_records', JSON.stringify(records));
+    renderTable();
+
+    // Invio automatico a Google Sheets (se configurato)
+    sendToGoogleSheets(newRecord);
+}
+
+function renderTable() {
+    const tbody = document.getElementById('logBody');
+    tbody.innerHTML = '';
+    document.getElementById('recordCount').innerText = records.length;
+
+    // Mostra prima le misurazioni più recenti
+    [...records].reverse().forEach(record => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${record.timestamp}</td>
+            <td>${record.location}</td>
+            <td>${record.pressure}</td>
+            <td>${record.trend}</td>
+            <td>${record.mag}</td>
+            <td>${record.variance}</td>
+            <td><strong>${record.result}</strong></td>
+            <td>${record.status}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function exportToCSV() {
+    if (records.length === 0) {
+        alert("Nessun dato salvato da esportare.");
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Data e Ora,Posizione,Pressione (hPa),Trend (hPa/3h),Campo Magnetico (uT),Varianza,Risultato Equazione,Previsione\n";
+
+    records.forEach(r => {
+        const row = `"${r.timestamp}","${r.location}",${r.pressure},${r.trend},${r.mag},${r.variance},${r.result},"${r.status}"`;
+        csvContent += row + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `misurazioni_mese_${new Date().toISOString().slice(0,7)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function clearHistory() {
+    if (confirm("Sei sicuro di voler cancellare tutto lo storico delle misurazioni salvate?")) {
+        records = [];
+        localStorage.removeItem('magneto_baro_records');
+        renderTable();
+    }
+}
+
+// Invia dati a Google Apps Script
+function sendToGoogleSheets(data) {
+    const webhookUrl = document.getElementById('webhookUrl').value.trim();
+    if (!webhookUrl) return;
+
+    fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).catch(err => console.error("Errore nell'invio a Google Sheets:", err));
+}
+</script>
+
+</body>
+</html>
